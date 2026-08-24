@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Molecular Bingo — Organic Chemistry Card Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vditor/3.11.2/js/smiles-drawer/smiles-drawer.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --board:#123328;
+    --board-line:#2e5a49;
+    --paper:#faf5e6;
+    --paper-line:#e4d9bd;
+    --ink:#1c211d;
+    --ink-soft:#5a6058;
+    --accent:#d9642a;
+    --accent-ink:#3a1c0d;
+    --tag:#b3893f;
+    --danger:#b3402c;
+    --good:#3f7a52;
+    --radius:10px;
+    --shadow: 0 1px 0 rgba(0,0,0,.05), 0 8px 20px -12px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--board);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,.05) 1px, transparent 1px);
+    background-size: 22px 22px;
+    color:var(--paper);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px;}
+
+  header.top{margin-bottom:28px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    letter-spacing:.18em;
+    font-size:11px;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 6px;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:clamp(28px,4.5vw,44px);
+    line-height:1.05;
+    margin:0 0 10px;
+    color:var(--paper);
+  }
+  h1 em{color:var(--accent);font-style:normal;}
+  .lede{
+    color:#cfe0d6;
+    max-width:640px;
+    font-size:15px;
+    line-height:1.55;
+    margin:0;
+  }
+
+  /* ---------- panel ---------- */
+  .panel{
+    background:var(--board);
+    border:1px solid var(--board-line);
+    border-radius:var(--radius);
+    padding:22px;
+    margin-bottom:26px;
+  }
+  .panel h2{
+    font-family:'Fraunces', serif;
+    font-size:19px;
+    margin:0 0 4px;
+    color:var(--paper);
+  }
+  .panel p.hint{
+    margin:0 0 16px;
+    font-size:13px;
+    color:#a9c0b3;
+    line-height:1.5;
+  }
+  label.field{display:block;margin-bottom:16px;}
+  label.field .field-label{
+    display:flex; align-items:center; justify-content:space-between;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    color:#9fbaab; margin-bottom:6px;
+  }
+  textarea, input[type=number], input[type=text]{
+    width:100%;
+    background:#0d271e;
+    border:1px solid var(--board-line);
+    color:var(--paper);
+    border-radius:7px;
+    padding:10px 12px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    line-height:1.6;
+  }
+  textarea{min-height:220px; resize:vertical;}
+  input[type=number]{width:110px;}
+  .row{display:flex; gap:22px; flex-wrap:wrap; align-items:flex-end;}
+  .checkline{display:flex; align-items:center; gap:8px; font-size:13px; color:#cfe0d6;}
+  .checkline input{accent-color:var(--accent);}
+
+  button{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:600;
+    letter-spacing:.03em;
+    font-size:13px;
+    border-radius:7px;
+    padding:11px 18px;
+    border:1px solid transparent;
+    cursor:pointer;
+    transition:transform .08s ease, filter .12s ease;
+  }
+  button:active{transform:translateY(1px);}
+  .btn-primary{background:var(--accent); color:#241005;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-ghost{background:transparent; border-color:var(--board-line); color:var(--paper);}
+  .btn-ghost:hover{border-color:var(--accent); color:var(--accent);}
+  .error-msg{
+    background:#3a1512; border:1px solid var(--danger); color:#ffcfc4;
+    padding:10px 12px; border-radius:7px; font-size:13px; margin-top:12px;
+  }
+
+  /* ---------- specimen tag on cards ---------- */
+  .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9.5px;
+    letter-spacing:.03em;
+    color:var(--tag);
+  }
+
+  /* ---------- bingo card ---------- */
+  #output{display:flex; flex-direction:column; gap:34px;}
+  .card{
+    background:var(--paper);
+    color:var(--ink);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:20px 20px 16px;
+    max-width:620px;
+  }
+  .card-head{
+    display:flex; align-items:flex-start; justify-content:space-between;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:10px; margin-bottom:14px;
+  }
+  .card-head h3{
+    font-family:'Fraunces', serif;
+    font-size:20px; margin:0;
+  }
+  .card-head .sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px; color:var(--ink-soft); margin-top:3px;
+  }
+  .qr-block{text-align:center;}
+  .qr-block .qr{
+    background:#fff; padding:4px; border:1px solid var(--paper-line); border-radius:4px;
+    display:inline-block; line-height:0;
+  }
+  .qr-block .tag{display:block; margin-top:4px; text-align:center;}
+
+  .grid5{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:5px;
+  }
+  .cell{
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-radius:5px;
+    aspect-ratio:1/1;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:3px;
+    overflow:hidden;
+  }
+  .cell canvas{width:100%; height:100%; display:block;}
+  .cell .name{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:7.4px; color:var(--ink-soft); margin-top:1px;
+    text-align:center; line-height:1.1;
+  }
+  .cell.free{
+    background:var(--accent);
+    color:#241005;
+    justify-content:center;
+  }
+  .cell.free svg{width:52%; height:52%;}
+  .cell.free .name{color:#3a1c0d; font-weight:600; font-size:8.5px; letter-spacing:.08em;}
+
+  .card-foot{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-top:12px; padding-top:8px; border-top:1px dashed var(--paper-line);
+  }
+
+  /* ---------- caller deck ---------- */
+  .caller-grid{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px;
+  }
+  .caller-card{
+    background:var(--paper); color:var(--ink); border-radius:8px;
+    padding:14px 10px; text-align:center; box-shadow:var(--shadow);
+  }
+  .caller-card .formula{
+    font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:15px;
+    letter-spacing:.02em;
+  }
+  .caller-card .cname{
+    font-family:'IBM Plex Sans'; font-size:10.5px; color:var(--ink-soft); margin-top:6px;
+  }
+
+  section.block{margin-bottom:30px;}
+  section.block h2{
+    font-family:'Fraunces', serif; font-size:22px; color:var(--paper); margin:0 0 4px;
+  }
+  section.block p.hint{color:#a9c0b3; font-size:13px; margin:0 0 16px;}
+
+  /* verify panel result */
+  #verifyResult{margin-top:18px;}
+
+  footer.credit{
+    text-align:center; color:#6e8a7b; font-size:11.5px;
+    font-family:'IBM Plex Mono', monospace; margin-top:40px;
+  }
+
+  @media print{
+    body{background:#fff !important;}
+    .no-print{display:none !important;}
+    .card{
+      box-shadow:none; max-width:none; page-break-after:always;
+      border:1px solid #ccc;
+    }
+    #output{gap:0;}
+    section.block h2, section.block p.hint{display:none;}
+    .caller-card{box-shadow:none; border:1px solid #ccc; page-break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">Organic Chemistry &middot; Recognition Drill</p>
+    <h1>Molecular <em>Bingo</em></h1>
+    <p class="lede">Generate a set of bingo cards showing skeletal structures. The caller reads out a condensed formula — players find the matching structure. Each card gets a unique randomized layout and a scannable specimen tag so you can pull it back up to verify a win.</p>
+  </header>
+
+  <div class="panel no-print">
+    <h2>1 &middot; Molecule pool</h2>
+    <p class="hint">One molecule per line: <code>Name | SMILES | Condensed formula</code>. Edit, add, or remove freely — you need at least 24 for a 5×5 card with a free center space.</p>
+    <label class="field">
+      <span class="field-label"><span>Pool</span><span id="poolCount">0 molecules</span></span>
+      <textarea id="poolInput" spellcheck="false"></textarea>
+    </label>
+
+    <h2 style="margin-top:22px;">2 &middot; Card settings</h2>
+    <div class="row">
+      <label class="field" style="margin-bottom:0;">
+        <span class="field-label">Number of cards</span>
+        <input type="number" id="numCards" value="6" min="1" max="200">
+      </label>
+      <label class="checkline"><input type="checkbox" id="showNames"> Show molecule names under structures</label>
+      <label class="checkline"><input type="checkbox" id="includeCaller" checked> Also build a caller deck</label>
+    </div>
+    <div class="row" style="margin-top:18px;">
+      <button class="btn-primary" id="generateBtn">Generate bingo cards</button>
+      <button class="btn-ghost" id="resetPoolBtn">Reset pool to defaults</button>
+    </div>
+    <div id="errorBox"></div>
+  </div>
+
+  <div class="panel no-print">
+    <h2>Verify a card</h2>
+    <p class="hint">Scan a card's QR tag with any QR reader, then paste what it decodes to here. This redraws that exact card on screen — no need to reprint or hunt for the original.</p>
+    <label class="field">
+      <span class="field-label">Scanned tag data</span>
+      <input type="text" id="verifyInput" placeholder="Paste decoded QR text here">
+    </label>
+    <button class="btn-ghost" id="verifyBtn">Show this card</button>
+    <div id="verifyResult"></div>
+  </div>
+
+  <div class="row no-print" id="printRow" style="display:none; margin-bottom:10px;">
+    <button class="btn-primary" id="printBtn">Print all</button>
+    <span style="align-self:center; color:#a9c0b3; font-size:12.5px;">Each bingo card prints on its own page, followed by the caller deck.</span>
+  </div>
+
+  <section class="block" id="cardsSection" style="display:none;">
+    <h2>Bingo cards</h2>
+    <p class="hint">Distinct random layout per card, each tagged with a card number and seed.</p>
+    <div id="output"></div>
+  </section>
+
+  <section class="block" id="callerSection" style="display:none;">
+    <h2>Caller deck</h2>
+    <p class="hint">Read the condensed formula aloud (or hold it up); players scan their cards for the matching structure. Molecule name shown small, for the host only.</p>
+    <div class="caller-grid" id="callerOutput"></div>
+  </section>
+
+  <footer class="credit no-print">Skeletal structures rendered with SmilesDrawer &middot; tags encoded with QRCode.js</footer>
+</div>
+
+<script>
+/* ---------------------------------------------------------------------
+   Default molecule pool: name | SMILES | condensed formula
+--------------------------------------------------------------------- */
+const DEFAULT_POOL = [
+  ["Methane","C","CH4"],
+  ["Ethane","CC","CH3CH3"],
+  ["Propane","CCC","CH3CH2CH3"],
+  ["Butane","CCCC","CH3CH2CH2CH3"],
+  ["Isobutane","CC(C)C","(CH3)2CHCH3"],
+  ["Neopentane","CC(C)(C)C","C(CH3)4"],
+  ["Methanol","CO","CH3OH"],
+  ["Ethanol","CCO","CH3CH2OH"],
+  ["Propan-1-ol","CCCO","CH3CH2CH2OH"],
+  ["Isopropanol","CC(O)C","(CH3)2CHOH"],
+  ["tert-Butanol","CC(C)(C)O","(CH3)3COH"],
+  ["Dimethyl ether","COC","CH3OCH3"],
+  ["Diethyl ether","CCOCC","CH3CH2OCH2CH3"],
+  ["Formaldehyde","C=O","HCHO"],
+  ["Acetaldehyde","CC=O","CH3CHO"],
+  ["Propanal","CCC=O","CH3CH2CHO"],
+  ["Acetone","CC(=O)C","CH3COCH3"],
+  ["Butanone","CCC(=O)C","CH3CH2COCH3"],
+  ["Acetic acid","CC(=O)O","CH3COOH"],
+  ["Butanoic acid","CCCC(=O)O","CH3CH2CH2COOH"],
+  ["Methyl acetate","CC(=O)OC","CH3COOCH3"],
+  ["Acetamide","CC(=O)N","CH3CONH2"],
+  ["Ethylamine","CCN","CH3CH2NH2"],
+  ["Acetonitrile","CC#N","CH3CN"],
+  ["Nitromethane","C[N+](=O)[O-]","CH3NO2"],
+  ["Chloromethane","CCl","CH3Cl"],
+  ["Dichloromethane","ClCCl","CH2Cl2"],
+  ["Chloroform","ClC(Cl)Cl","CHCl3"],
+  ["Cyclohexane","C1CCCCC1","C6H12"],
+  ["Cyclopentane","C1CCCC1","C5H10"],
+  ["Ethylene","C=C","CH2=CH2"],
+  ["Propene","CC=C","CH3CH=CH2"],
+  ["Acetylene","C#C","HC≡CH"],
+  ["Vinyl chloride","C=CCl","CH2=CHCl"],
+  ["Benzene","c1ccccc1","C6H6"],
+  ["Toluene","Cc1ccccc1","C6H5CH3"],
+  ["Phenol","Oc1ccccc1","C6H5OH"],
+  ["Aniline","Nc1ccccc1","C6H5NH2"],
+  ["Benzaldehyde","O=Cc1ccccc1","C6H5CHO"],
+  ["Benzoic acid","OC(=O)c1ccccc1","C6H5COOH"],
+  ["Styrene","C=Cc1ccccc1","C6H5CH=CH2"]
+];
+
+const poolInput = document.getElementById('poolInput');
+const poolCountEl = document.getElementById('poolCount');
+
+function poolToText(pool){
+  return pool.map(m => m.join(" | ")).join("\n");
+}
+function textToPool(text){
+  return text.split("\n").map(l => l.trim()).filter(Boolean).map(line => {
+    const parts = line.split("|").map(s => s.trim());
+    return { name: parts[0] || "?", smiles: parts[1] || "", formula: parts[2] || "" };
+  }).filter(m => m.smiles);
+}
+function refreshPoolCount(){
+  const n = textToPool(poolInput.value).length;
+  poolCountEl.textContent = n + " molecule" + (n === 1 ? "" : "s");
+}
+poolInput.value = poolToText(DEFAULT_POOL);
+poolInput.addEventListener('input', refreshPoolCount);
+refreshPoolCount();
+
+document.getElementById('resetPoolBtn').addEventListener('click', () => {
+  poolInput.value = poolToText(DEFAULT_POOL);
+  refreshPoolCount();
+});
+
+/* ---------------------------------------------------------------------
+   Seeded RNG + shuffle
+--------------------------------------------------------------------- */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function shuffled(arr, rng){
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function randomSeed(){
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0];
+}
+
+/* ---------------------------------------------------------------------
+   Structure rendering
+--------------------------------------------------------------------- */
+function drawStructure(canvas, smiles){
+  const ctx = canvas.getContext('2d');
+  try {
+    SmilesDrawer.parse(smiles, function(tree){
+      try {
+        const drawer = new SmilesDrawer.Drawer({
+          width: canvas.width, height: canvas.height,
+          bondThickness: 1.4, bondLength: canvas.width / 9,
+          padding: canvas.width * 0.09,
+          fontSizeLarge: canvas.width * 0.045,
+          fontSizeSmall: canvas.width * 0.025,
+          terminalCarbons: false,
+          explicitHydrogens: false,
+          compactDrawing: true
+        });
+        drawer.draw(tree, canvas, 'light', false);
+      } catch(e){ fallbackText(ctx, canvas, smiles); }
+    }, function(){ fallbackText(ctx, canvas, smiles); });
+  } catch(e){ fallbackText(ctx, canvas, smiles); }
+}
+function fallbackText(ctx, canvas, text){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#1c211d';
+  ctx.font = (canvas.width*0.09) + 'px IBM Plex Mono, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, canvas.width/2, canvas.height/2);
+}
+
+const FREE_SVG = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M9 2v6.2L3.6 17a2 2 0 0 0 1.7 3h13.4a2 2 0 0 0 1.7-3L15 8.2V2" stroke="#241005" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M7.5 14.5h9" stroke="#241005" stroke-width="1.6"/>
+  <path d="M9 2h6" stroke="#241005" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
+
+/* ---------------------------------------------------------------------
+   Card generation
+--------------------------------------------------------------------- */
+const GRID_SIZE = 5;
+const CELLS = GRID_SIZE * GRID_SIZE;
+const FREE_INDEX = 12;
+
+function buildCardGrid(pool, seed){
+  const picks = shuffled(pool, mulberry32(seed)).slice(0, CELLS - 1);
+  const grid = [];
+  let p = 0;
+  for (let i = 0; i < CELLS; i++){
+    if (i === FREE_INDEX){ grid.push(null); }
+    else { grid.push(picks[p++]); }
+  }
+  return grid;
+}
+
+function renderCard(cardNumber, seed, grid, showNames){
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const head = document.createElement('div');
+  head.className = 'card-head';
+  head.innerHTML = `
+    <div>
+      <h3>Molecular Bingo</h3>
+      <div class="sub">Card No. ${String(cardNumber).padStart(3,'0')}</div>
+    </div>`;
+  const qrBlock = document.createElement('div');
+  qrBlock.className = 'qr-block';
+  const qrDiv = document.createElement('div');
+  qrDiv.className = 'qr';
+  qrBlock.appendChild(qrDiv);
+  const qrLabel = document.createElement('span');
+  qrLabel.className = 'tag';
+  qrLabel.textContent = 'SEED ' + seed;
+  qrBlock.appendChild(qrLabel);
+  head.appendChild(qrBlock);
+  card.appendChild(head);
+
+  const gridEl = document.createElement('div');
+  gridEl.className = 'grid5';
+  grid.forEach((m) => {
+    const cell = document.createElement('div');
+    if (m === null){
+      cell.className = 'cell free';
+      cell.innerHTML = FREE_SVG + `<div class="name">FREE</div>`;
+    } else {
+      cell.className = 'cell';
+      const canvas = document.createElement('canvas');
+      canvas.width = 220; canvas.height = 220;
+      cell.appendChild(canvas);
+      if (showNames){
+        const nm = document.createElement('div');
+        nm.className = 'name';
+        nm.textContent = m.name;
+        cell.appendChild(nm);
+      }
+      requestAnimationFrame(() => drawStructure(canvas, m.smiles));
+    }
+    gridEl.appendChild(cell);
+  });
+  card.appendChild(gridEl);
+
+  const foot = document.createElement('div');
+  foot.className = 'card-foot';
+  foot.innerHTML = `<span class="tag">MOLECULAR BINGO &middot; ORGANIC CHEMISTRY</span><span class="tag">5&times;5 &middot; FREE CENTER</span>`;
+  card.appendChild(foot);
+
+  // QR payload: fully self-contained so a scan can rebuild this exact card
+  const payload = JSON.stringify({
+    c: cardNumber,
+    s: seed,
+    g: grid.map(m => m ? [m.name, m.smiles, m.formula] : null)
+  });
+  new QRCode(qrDiv, { text: payload, width: 64, height: 64, correctLevel: QRCode.CorrectLevel.M });
+
+  return card;
+}
+
+function renderCallerCard(m){
+  const el = document.createElement('div');
+  el.className = 'caller-card';
+  el.innerHTML = `<div class="formula">${m.formula || m.smiles}</div><div class="cname">${m.name}</div>`;
+  return el;
+}
+
+/* ---------------------------------------------------------------------
+   Wiring
+--------------------------------------------------------------------- */
+const errorBox = document.getElementById('errorBox');
+function showError(msg){
+  errorBox.innerHTML = `<div class="error-msg">${msg}</div>`;
+}
+function clearError(){ errorBox.innerHTML = ''; }
+
+document.getElementById('generateBtn').addEventListener('click', () => {
+  clearError();
+  const pool = textToPool(poolInput.value);
+  const numCards = Math.max(1, Math.min(200, parseInt(document.getElementById('numCards').value, 10) || 1));
+  const showNames = document.getElementById('showNames').checked;
+  const includeCaller = document.getElementById('includeCaller').checked;
+
+  if (pool.length < CELLS - 1){
+    showError(`You need at least ${CELLS - 1} molecules in the pool for a 5&times;5 card with a free center. Currently: ${pool.length}.`);
+    return;
+  }
+
+  const output = document.getElementById('output');
+  output.innerHTML = '';
+  const usedSeeds = new Set();
+  for (let i = 1; i <= numCards; i++){
+    let seed;
+    do { seed = randomSeed(); } while (usedSeeds.has(seed));
+    usedSeeds.add(seed);
+    const grid = buildCardGrid(pool, seed);
+    output.appendChild(renderCard(i, seed, grid, showNames));
+  }
+  document.getElementById('cardsSection').style.display = '';
+
+  const callerSection = document.getElementById('callerSection');
+  const callerOutput = document.getElementById('callerOutput');
+  callerOutput.innerHTML = '';
+  if (includeCaller){
+    pool.forEach(m => callerOutput.appendChild(renderCallerCard(m)));
+    callerSection.style.display = '';
+  } else {
+    callerSection.style.display = 'none';
+  }
+
+  document.getElementById('printRow').style.display = '';
+  document.getElementById('cardsSection').scrollIntoView({ behavior:'smooth', block:'start' });
+});
+
+document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+document.getElementById('verifyBtn').addEventListener('click', () => {
+  const raw = document.getElementById('verifyInput').value.trim();
+  const resultEl = document.getElementById('verifyResult');
+  resultEl.innerHTML = '';
+  if (!raw){ return; }
+  let data;
+  try { data = JSON.parse(raw); }
+  catch(e){
+    resultEl.innerHTML = `<div class="error-msg">That doesn't look like tag data from one of these cards — couldn't parse it.</div>`;
+    return;
+  }
+  if (!data || !Array.isArray(data.g)){
+    resultEl.innerHTML = `<div class="error-msg">That doesn't look like tag data from one of these cards.</div>`;
+    return;
+  }
+  const grid = data.g.map(cell => cell ? { name: cell[0], smiles: cell[1], formula: cell[2] } : null);
+  resultEl.appendChild(renderCard(data.c, data.s, grid, true));
+});
+</script>
+</body>
+</html>
